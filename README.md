@@ -7,6 +7,7 @@ Most plotters move a pen along X and Y. PolarBot rotates the paper (θ) and move
 ![Platform](https://img.shields.io/badge/platform-ESP8266-blue)
 ![Framework](https://img.shields.io/badge/framework-Arduino%20%2F%20PlatformIO-orange)
 ![Web](https://img.shields.io/badge/web%20app-vanilla%20JS-yellow)
+![License](https://img.shields.io/badge/license-MIT-green)
 
 ---
 
@@ -28,7 +29,8 @@ PolarBot/
 │   └── src/main.cpp
 ├── web/           Browser control panel (open index.html)
 ├── cad/           3D-printable parts (STL)
-└── docs/          In-depth architecture & design notes
+├── docs/          Architecture notes and diagrams
+└── LICENSE
 ```
 
 ## How it works
@@ -70,12 +72,19 @@ For a full walkthrough of the firmware, kinematics, buffering and the hardware i
 
 ### Wiring
 
-Both motors use AccelStepper in `HALF4WIRE` mode (4096 steps/rev). The pins below are GPIO numbers, listed in the order they are passed to the `AccelStepper` constructor.
+<p align="center">
+  <img src="docs/images/wiring.svg" alt="Wiring diagram: NodeMCU pins D1, D2, D5, D6 to the plate ULN2003 driver; D7, RX, D0, TX to the arm driver; VIN and GND power both drivers; each driver connects to a 28BYJ-48 motor" width="100%">
+</p>
 
-| Motor | GPIO (NodeMCU label) |
-|-------|----------------------|
-| Plate (θ) | 5 (D1), 14 (D5), 4 (D2), 12 (D6) |
-| Arm (r) | 13 (D7), 16 (D0), 3 (RX), 1 (TX) |
+| Driver input | Plate (θ) | Arm (r) |
+|:------------:|:---------:|:-------:|
+| IN1 | D1 · GPIO5 | D7 · GPIO13 |
+| IN2 | D2 · GPIO4 | RX · GPIO3 |
+| IN3 | D5 · GPIO14 | D0 · GPIO16 |
+| IN4 | D6 · GPIO12 | TX · GPIO1 |
+| − / + | GND / VIN | GND / VIN |
+
+Both motors run in AccelStepper `HALF4WIRE` mode (4096 steps/rev). In the firmware, pins are passed in the order `IN1, IN3, IN2, IN4`, which is the correct coil sequence for the 28BYJ-48.
 
 > [!NOTE]
 > **Power:** both ULN2003 boards take their 5 V and GND straight from the NodeMCU, so the whole machine runs from a single USB port. The firmware homes the arm *before* turning on WiFi, so the motors and the radio never draw peak current at the same time.
@@ -142,3 +151,27 @@ The motors' internal gearboxes have backlash. To compensate:
 4. Click **UPDATE Live Settings** and repeat until the square is accurate.
 
 Steps-per-revolution and steps-per-mm are constants at the top of [`firmware/src/main.cpp`](firmware/src/main.cpp) (`PLATE_STEPS_PER_REV`, `STEPS_PER_MM_ARM`).
+
+---
+
+## Limitations
+
+- **No pen lift.** The pen touches the paper at all times, so every `G0` travel move leaves a line. Designs work best as one continuous path, or as strokes that start and end near each other.
+- **Open-loop homing.** There is no endstop. Homing drives the arm into its mechanical stop for a fixed time and treats that as the centre. Accuracy depends on the pen being mounted consistently.
+- **Backlash resets on reboot.** Values set with `M100` are not saved. The firmware starts with its built-in defaults every time it powers on.
+- **Firmware `G91` / `G28` handling.** The firmware applies relative moves incorrectly, and `G28` doesn't move the pen. The web app converts these to absolute moves, so this only matters if you send G-code another way.
+- **Web app runs locally.** Browsers block unencrypted WebSocket connections from HTTPS pages, so the control panel can't be hosted on GitHub Pages. Open it from disk.
+- **No position feedback.** The 28BYJ-48 motors can skip steps under load without the firmware noticing.
+
+## Roadmap
+
+- [ ] Servo-driven pen lift (`M3`/`M5` or `Z` moves)
+- [ ] Fix `G91` relative moves and `G28` in the firmware
+- [ ] Save backlash settings to flash
+- [ ] Serve the web app from the ESP8266 itself (`http://polarplotter.local`)
+- [ ] Endstop or hall sensor for repeatable homing
+- [ ] Built-in SVG → G-code conversion in the web app
+
+## License
+
+Released under the [MIT License](LICENSE).
