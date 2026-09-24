@@ -1,0 +1,19 @@
+body {
+    font-family: 'Space Mono', monospace;
+    background-color: #ffffff;
+    color: #000000;
+}
+
+/* Custom scrollbar for minimalist look */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: #ffffff; border-left: 2px solid #000000; }
+::-webkit-scrollbar-thumb { background: #000000; }
+
+/* Hide Details Marker */
+details > summary { list-style: none; }
+details > summary::-webkit-details-marker { display: none; }
+
+/* Canvas Rendering Fix */
+#gcode-canvas {
+    image-rendering: pixelated;
+}

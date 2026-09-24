@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POLAR_BOT</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="min-h-screen p-8 flex flex-col max-w-6xl mx-auto selection:bg-black selection:text-white">
+
+    <!-- HEADER -->
+    <header class="flex flex-col md:flex-row justify-between items-center mb-8 border-b-[3px] border-black pb-4 gap-4 shrink-0">
+        <div class="text-3xl font-bold tracking-tighter">POLAR<span class="text-orange-500">_BOT</span></div>
+        
+        <!-- TABS -->
+        <nav class="flex space-x-8 text-sm" id="tab-nav">
+            <button class="tab-btn font-bold text-orange-500 border-b-[3px] border-orange-500 pb-1 transition-colors" data-target="0">START</button>
+            <button class="tab-btn text-gray-500 hover:text-orange-500 border-b-[3px] border-transparent hover:border-orange-500 pb-1 transition-colors" data-target="1">STREAM</button>
+            <button class="tab-btn text-gray-500 hover:text-orange-500 border-b-[3px] border-transparent hover:border-orange-500 pb-1 transition-colors" data-target="2">GUIDE</button>
+        </nav>
+        
+        <!-- ACTIONS -->
+        <div class="flex space-x-2 text-sm">
+            <input type="text" id="ws-url" value="ws://polarplotter.local:81" class="border-2 border-black px-3 py-1 w-48 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+            <button id="btn-connect" class="border-2 border-black bg-black text-white px-4 py-1 hover:bg-orange-500 hover:border-orange-500 transition-colors font-bold">CONNECT</button>
+            <button id="btn-home" disabled class="border-2 border-black px-4 py-1 hover:bg-orange-500 hover:border-orange-500 hover:text-white transition-colors disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-black disabled:hover:border-black font-bold">HOME ARM</button>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="relative w-full flex-grow flex flex-col overflow-hidden min-h-0">
+        <!-- SLIDER CONTAINER -->
+        <div id="tab-slider" class="flex w-[300%] h-full transition-transform duration-500 ease-in-out transform translate-x-0">
+
+        <!-- TAB 1: START -->
+        <div id="tab-start" class="tab-pane w-1/3 h-full flex flex-col md:flex-row gap-8 pr-4">
+            
+            <!-- Quick Shapes -->
+            <div class="flex-1 border-2 border-black p-6 flex flex-col">
+                <h2 class="text-xl font-bold mb-6 border-b-2 border-black pb-2 uppercase text-orange-500">Quick Shapes (100x100mm)</h2>
+                <p class="text-sm text-gray-600 mb-6">Click a shape to instantly generate perfectly scaled G-code. Then switch to the Stream tab to preview and execute.</p>
+                <div class="grid grid-cols-2 gap-4 flex-grow content-start">
+                    <button class="shape-btn border-2 border-black py-4 font-bold hover:bg-orange-500 hover:border-orange-500 hover:text-white transition-colors" data-shape="triangle">TRIANGLE</button>
+                    <button class="shape-btn border-2 border-black py-4 font-bold hover:bg-orange-500 hover:border-orange-500 hover:text-white transition-colors" data-shape="square">SQUARE</button>
+                    <button class="shape-btn border-2 border-black py-4 font-bold hover:bg-orange-500 hover:border-orange-500 hover:text-white transition-colors" data-shape="pentagon">PENTAGON</button>
+                    <button class="shape-btn border-2 border-black py-4 font-bold hover:bg-orange-500 hover:border-orange-500 hover:text-white transition-colors" data-shape="hexagon">HEXAGON</button>
+                    <button class="shape-btn border-2 border-black py-4 font-bold hover:bg-orange-500 hover:border-orange-500 hover:text-white transition-colors col-span-2" data-shape="star">STAR</button>
+                </div>
+            </div>
+
+            <!-- Tuning -->
+            <div class="w-full md:w-1/3 border-2 border-black p-6 flex flex-col">
+                <h2 class="text-xl font-bold mb-6 border-b-2 border-black pb-2 uppercase text-orange-500">System Tuning</h2>
+                <div class="mb-4">
+                    <label class="block text-sm font-bold mb-2">PLATE BACKLASH (DEGREES)</label>
+                    <input type="number" step="0.1" id="val-plate" value="2.0" class="w-full border-2 border-black px-4 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-bold mb-2">ARM BACKLASH (MM)</label>
+                    <input type="number" step="0.1" id="val-arm" value="1.8" class="w-full border-2 border-black px-4 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+                </div>
+                <button id="btn-calibration" class="w-full border-2 border-black py-2 mb-4 font-bold hover:bg-orange-500 hover:border-orange-500 hover:text-white transition-colors">DRAW CALIBRATION TEST</button>
+                <div class="flex-grow"></div>
+                <button id="btn-update" disabled class="w-full border-2 border-black bg-black text-white py-3 font-bold hover:bg-orange-500 hover:border-orange-500 transition-colors disabled:opacity-20 disabled:hover:bg-black disabled:hover:border-black">UPDATE Live Settings</button>
+                <button id="btn-how-to-cal" class="w-full text-center text-xs underline mt-2 text-gray-500 hover:text-orange-500">How to calibrate?</button>
+            </div>
+        </div>
+
+        <!-- TAB 2: STREAM -->
+        <div id="tab-stream" class="tab-pane w-1/3 h-full flex flex-col px-4">
+            <div class="flex flex-col md:flex-row justify-between items-end md:items-center mb-4 gap-4">
+                <div class="flex items-center gap-4 w-full md:w-auto">
+                    <label class="border-2 border-black px-6 py-2 cursor-pointer hover:bg-orange-500 hover:border-orange-500 hover:text-white transition-colors font-bold text-center">
+                        LOAD FILE
+                        <input type="file" id="file-input" accept=".gcode,.nc,.txt" class="hidden">
+                    </label>
+                    <span id="file-name" class="text-sm truncate w-48 font-bold text-orange-500">No file selected</span>
+                </div>
+                <button id="btn-stream" disabled class="border-2 border-black bg-black text-white px-8 py-2 font-bold hover:bg-orange-500 hover:border-orange-500 transition-colors disabled:opacity-20 disabled:hover:bg-black disabled:hover:border-black w-full md:w-auto">START STREAMING</button>
+            </div>
+            
+            <!-- Progress Bar -->
+            <div class="w-full border-2 border-black h-4 mb-2">
+                <div id="progress-fill" class="bg-orange-500 h-full w-0 transition-all duration-100"></div>
+            </div>
+            <div class="text-right text-xs font-bold mb-4" id="progress-text">0 / 0 LINES PROCESSED</div>
+
+            <!-- G-Code Viewer (Canvas) -->
+            <div class="flex-grow border-2 border-black flex flex-col min-h-0">
+                <div class="bg-black text-white px-4 py-1 text-xs font-bold border-b-2 border-black">G-CODE PREVIEW <span class="text-orange-500">(125mm Diameter)</span></div>
+                <div class="flex-grow bg-[#fafafa] flex items-center justify-center p-2 overflow-hidden">
+                    <canvas id="gcode-canvas" width="500" height="500" class="border-[3px] border-black shadow-[inset_0_4px_12px_rgba(0,0,0,0.1)] bg-white rounded-full max-h-full max-w-full object-contain aspect-square"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: GUIDE -->
+        <div id="tab-guide" class="tab-pane w-1/3 h-full overflow-y-auto pl-4 pr-2">
+            <h2 class="text-2xl font-bold mb-8 uppercase border-b-[3px] border-black pb-2 text-orange-500">System Guide & Documentation</h2>
+            
+            <details class="mb-4 border-2 border-black group">
+                <summary class="font-bold p-4 bg-[#fafafa] cursor-pointer group-open:border-b-2 border-black flex justify-between items-center select-none hover:bg-orange-50 hover:text-orange-600 transition-colors">
+                    HOW TO CONNECT TO WIFI
+                    <span class="group-open:rotate-180 transition-transform">▼</span>
+                </summary>
+                <div class="p-6 text-sm leading-relaxed bg-white">
+                    <p class="mb-2">When the ESP8266 is turned on without saved credentials, it behaves as an Access Point.</p>
+                    <ol class="list-decimal pl-5 space-y-2">
+                        <li>Open your computer or phone's WiFi settings and connect to the network named <strong>PolarPlotter-Setup</strong>.</li>
+                        <li>A configuration portal should automatically pop up. If it doesn't, navigate to <strong>http://192.168.4.1</strong> in your browser.</li>
+                        <li>Select your home WiFi network from the list and enter your password.</li>
+                        <li>The ESP8266 will save these settings permanently and restart.</li>
+                        <li>Ensure your computer is on the same home network, and simply click <strong>Connect</strong> in this Web App!</li>
+                    </ol>
+                </div>
+            </details>
+            
+            <details id="guide-calibrate" class="mb-4 border-2 border-black group">
+                <summary class="font-bold p-4 bg-[#fafafa] cursor-pointer group-open:border-b-2 border-black flex justify-between items-center select-none hover:bg-orange-50 hover:text-orange-600 transition-colors">
+                    HOW TO CALIBRATE BACKLASH
+                    <span class="group-open:rotate-180 transition-transform">▼</span>
+                </summary>
+                <div class="p-6 text-sm leading-relaxed bg-white">
+                    <p class="mb-4">The internal reduction gears inside the 28BYJ-48 stepper motors have microscopic physical gaps between their teeth. This is known as "Backlash". When a motor reverses direction, the internal shaft must turn several degrees before the physical outer gears actually engage and begin pushing the arm.</p>
+                    <p class="mb-4 font-bold text-orange-500">How to calibrate:</p>
+                    <ol class="list-decimal pl-5 space-y-2">
+                        <li>Click the <strong>DRAW CALIBRATION TEST</strong> button in the Start tab. This draws a 40x40mm square with a crosshair inside.</li>
+                        <li>Use a caliper to measure the physical square drawn on the paper. If the square is 38x38mm, you are missing 2mm of movement due to Arm backlash.</li>
+                        <li>Enter your measured discrepancy into the <strong>ARM BACKLASH (MM)</strong> box.</li>
+                        <li>If the lines of the crosshair do not perfectly align or the corners of the square are wobbly, adjust the <strong>PLATE BACKLASH (DEGREES)</strong> slightly (try increments of 0.5 degrees).</li>
+                        <li>Click <strong>UPDATE Live Settings</strong> and draw the test again until the shape is perfect!</li>
+                    </ol>
+                </div>
+            </details>
+
+            <details class="mb-4 border-2 border-black group">
+                <summary class="font-bold p-4 bg-[#fafafa] cursor-pointer group-open:border-b-2 border-black flex justify-between items-center select-none hover:bg-orange-50 hover:text-orange-600 transition-colors">
+                    WHAT IS HOMING?
+                    <span class="group-open:rotate-180 transition-transform">▼</span>
+                </summary>
+                <div class="p-6 text-sm leading-relaxed bg-white">
+                    <p class="mb-4">The Polar Plotter uses an absolute coordinate system, but stepper motors are "dumb" and do not know where they are when they power on.</p>
+                    <p>Clicking the <strong>Home Arm</strong> button forces the arm motor to extend towards the center of the build plate until it hits its physical hard limit. The system then declares this point as <code>X:0 Y:0</code>. You should always ensure the pen is positioned exactly at the center of the plate before starting a stream.</p>
+                </div>
+            </details>
+        </div>
+
+        </div> <!-- End Slider -->
+    </main>
+
+    <!-- SYSTEM CONSOLE -->
+    <div class="mt-8 border-2 border-black h-48 flex flex-col shrink-0">
+        <div class="bg-black text-white px-4 py-1 text-xs font-bold flex justify-between">
+            <span>SYSTEM_CONSOLE</span>
+            <span id="conn-status" class="text-orange-500">OFFLINE</span>
+        </div>
+        <div id="terminal" class="flex-grow p-4 overflow-y-auto text-xs space-y-1 bg-white font-mono leading-tight">
+            <!-- Logs injected here -->
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script src="app.js"></script>
+</body>
+</html>
