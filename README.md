@@ -33,16 +33,9 @@ PolarBot/
 
 ## How it works
 
-```mermaid
-flowchart LR
-    A[".gcode file"] --> B["Web app<br/>(browser)"]
-    B -- "WebSocket :81<br/>one line per 'ok'" --> C["ESP8266<br/>8-line ring buffer"]
-    C --> D["G-code parser"]
-    D --> E["0.2 mm segmentation<br/>+ XY → r, θ"]
-    E --> F["Backlash<br/>compensation"]
-    F --> G["Plate stepper (θ)"]
-    F --> H["Arm stepper (r)"]
-```
+<p align="center">
+  <img src="docs/images/architecture.svg" alt="PolarBot architecture: web app streams G-code over WebSocket to the ESP8266, which buffers, converts to polar coordinates, compensates backlash and drives the plate and arm motors" width="100%">
+</p>
 
 For a full walkthrough of the firmware, kinematics, buffering and the hardware issues solved along the way, see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
@@ -56,8 +49,8 @@ For a full walkthrough of the firmware, kinematics, buffering and the hardware i
 |:---:|------|-------|
 | 1 | NodeMCU v2 (ESP8266) | Microcontroller + WiFi |
 | 2 | 28BYJ-48 stepper motor (5 V) | One rotates the plate, one drives the arm |
-| 2 | ULN2003 driver board | One per motor |
-| 1 | 5 V power supply | Must supply both motors and the WiFi current spikes |
+| 2 | ULN2003 driver board | One per motor, powered from the NodeMCU |
+| 1 | USB cable | The only power source for the whole machine |
 | 1 | Pen | Held by the printed pen holder |
 | — | Printed parts | See [`cad/`](cad) |
 
@@ -72,7 +65,6 @@ For a full walkthrough of the firmware, kinematics, buffering and the hardware i
 | `linear_rail.stl` | Linear rail for the pen arm |
 | `linear_cap.stl` | Cap that closes the linear rail assembly |
 | `linear_gear.stl` | Gear that drives the pen arm along the rail |
-| `linear_stabilizer_gear.stl` | Idler gear that keeps the arm stable on the rail |
 | `pen_holder_body.stl` | Pen holder body |
 | `pen_holder_cap.stl` | Pen holder cap |
 
@@ -84,6 +76,9 @@ Both motors use AccelStepper in `HALF4WIRE` mode (4096 steps/rev). The pins belo
 |-------|----------------------|
 | Plate (θ) | 5 (D1), 14 (D5), 4 (D2), 12 (D6) |
 | Arm (r) | 13 (D7), 16 (D0), 3 (RX), 1 (TX) |
+
+> [!NOTE]
+> **Power:** both ULN2003 boards take their 5 V and GND straight from the NodeMCU, so the whole machine runs from a single USB port. The firmware homes the arm *before* turning on WiFi, so the motors and the radio never draw peak current at the same time.
 
 > [!NOTE]
 > The arm motor uses the TX/RX pins, so the firmware does **not** use `Serial`. All communication goes over WiFi. Disconnect the arm driver when flashing over USB if the upload fails.
@@ -133,9 +128,9 @@ Open [`web/index.html`](web/index.html) in a browser on the same network and cli
 | `M100 P<steps> A<steps>` | Set plate / arm backlash compensation (custom) |
 | `M101` | Home the arm (custom) |
 
-`Z` values and feed rates are ignored. The firmware has no pen-lift axis.
+`Z` values and feed rates are ignored. The firmware has no pen-lift axis, so the pen stays down during `G0` travel moves too. The preview shows these travel moves in orange.
 
-The web app removes moves shorter than 0.5 mm before streaming. This keeps dense files (for example SVG exports) from stuttering.
+Before streaming, the web app converts every file to absolute `G0`/`G1` moves: it resolves `G91` relative moves and `G28`, and drops lines the firmware would ignore. It also merges moves shorter than 0.5 mm, which keeps dense files (for example SVG exports) from stuttering.
 
 ## Calibration
 

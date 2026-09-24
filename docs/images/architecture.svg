@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="210" viewBox="0 0 900 210" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M1 1 L9 5 L1 9" fill="none" stroke="#87867F" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <rect width="900" height="210" rx="16" fill="#FAF9F5"/>
+
+  <!-- Section labels -->
+  <g font-size="11" letter-spacing="1.4" fill="#87867F" font-weight="500">
+    <text x="36" y="46">BROWSER</text>
+    <text x="276" y="46">ESP8266</text>
+    <text x="752" y="46">MOTORS</text>
+  </g>
+
+  <!-- Browser -->
+  <rect x="36" y="66" width="156" height="88" rx="10" fill="#FFFFFF" stroke="#DEDCD1"/>
+  <text x="54" y="102" font-size="15" font-weight="600" fill="#141413">Web app</text>
+  <text x="54" y="124" font-size="12" fill="#5E5D59">normalize · preview</text>
+  <text x="54" y="140" font-size="12" fill="#5E5D59">stream</text>
+
+  <!-- WebSocket link -->
+  <line x1="196" y1="110" x2="262" y2="110" stroke="#D97757" stroke-width="1.5"/>
+  <path d="M254 104 L262 110 L254 116" fill="none" stroke="#D97757" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="229" y="98" font-size="11" fill="#D97757" text-anchor="middle">WebSocket</text>
+  <text x="229" y="132" font-size="11" fill="#87867F" text-anchor="middle">line ⇄ ok</text>
+
+  <!-- ESP8266 panel -->
+  <rect x="268" y="58" width="444" height="104" rx="14" fill="#F0EEE6"/>
+
+  <rect x="280" y="70" width="128" height="80" rx="10" fill="#FFFFFF" stroke="#DEDCD1"/>
+  <text x="296" y="104" font-size="15" font-weight="600" fill="#141413">Buffer</text>
+  <text x="296" y="126" font-size="12" fill="#5E5D59">8-line ring</text>
+
+  <line x1="412" y1="110" x2="426" y2="110" stroke="#87867F" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <rect x="430" y="70" width="128" height="80" rx="10" fill="#FFFFFF" stroke="#DEDCD1"/>
+  <text x="446" y="104" font-size="15" font-weight="600" fill="#141413">Kinematics</text>
+  <text x="446" y="126" font-size="12" fill="#5E5D59">XY → r, θ</text>
+
+  <line x1="562" y1="110" x2="576" y2="110" stroke="#87867F" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <rect x="580" y="70" width="120" height="80" rx="10" fill="#FFFFFF" stroke="#DEDCD1"/>
+  <text x="596" y="104" font-size="15" font-weight="600" fill="#141413">Backlash</text>
+  <text x="596" y="126" font-size="12" fill="#5E5D59">compensation</text>
+
+  <!-- To motors -->
+  <path d="M712 110 C 728 110, 730 87, 746 87" fill="none" stroke="#87867F" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <path d="M712 110 C 728 110, 730 133, 746 133" fill="none" stroke="#87867F" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <rect x="752" y="66" width="112" height="40" rx="10" fill="#FFFFFF" stroke="#DEDCD1"/>
+  <text x="768" y="91" font-size="14" font-weight="600" fill="#141413">Plate <tspan font-weight="400" fill="#D97757">θ</tspan></text>
+
+  <rect x="752" y="114" width="112" height="40" rx="10" fill="#FFFFFF" stroke="#DEDCD1"/>
+  <text x="768" y="139" font-size="14" font-weight="600" fill="#141413">Arm <tspan font-weight="400" fill="#D97757">r</tspan></text>
+
+  <text x="36" y="188" font-size="11" fill="#87867F">Cartesian G-code in, polar steps out.</text>
+</svg>

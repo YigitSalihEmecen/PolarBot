@@ -39,7 +39,7 @@
             
             <!-- Quick Shapes -->
             <div class="flex-1 border-2 border-black p-6 flex flex-col">
-                <h2 class="text-xl font-bold mb-6 border-b-2 border-black pb-2 uppercase text-orange-500">Quick Shapes (100x100mm)</h2>
+                <h2 class="text-xl font-bold mb-6 border-b-2 border-black pb-2 uppercase text-orange-500">Quick Shapes (Ø100mm)</h2>
                 <p class="text-sm text-gray-600 mb-6">Click a shape to instantly generate perfectly scaled G-code. Then switch to the Stream tab to preview and execute.</p>
                 <div class="grid grid-cols-2 gap-4 flex-grow content-start">
                     <button class="shape-btn border-2 border-black py-4 font-bold hover:bg-orange-500 hover:border-orange-500 hover:text-white transition-colors" data-shape="triangle">TRIANGLE</button>
@@ -55,11 +55,11 @@
                 <h2 class="text-xl font-bold mb-6 border-b-2 border-black pb-2 uppercase text-orange-500">System Tuning</h2>
                 <div class="mb-4">
                     <label class="block text-sm font-bold mb-2">PLATE BACKLASH (DEGREES)</label>
-                    <input type="number" step="0.1" id="val-plate" value="2.0" class="w-full border-2 border-black px-4 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+                    <input type="number" step="0.01" min="0" id="val-plate" class="w-full border-2 border-black px-4 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent">
                 </div>
                 <div class="mb-4">
                     <label class="block text-sm font-bold mb-2">ARM BACKLASH (MM)</label>
-                    <input type="number" step="0.1" id="val-arm" value="1.8" class="w-full border-2 border-black px-4 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+                    <input type="number" step="0.01" min="0" id="val-arm" class="w-full border-2 border-black px-4 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent">
                 </div>
                 <button id="btn-calibration" class="w-full border-2 border-black py-2 mb-4 font-bold hover:bg-orange-500 hover:border-orange-500 hover:text-white transition-colors">DRAW CALIBRATION TEST</button>
                 <div class="flex-grow"></div>
@@ -85,11 +85,11 @@
             <div class="w-full border-2 border-black h-4 mb-2">
                 <div id="progress-fill" class="bg-orange-500 h-full w-0 transition-all duration-100"></div>
             </div>
-            <div class="text-right text-xs font-bold mb-4" id="progress-text">0 / 0 LINES PROCESSED</div>
+            <div class="text-right text-xs font-bold mb-4" id="progress-text">0 / 0 LINES SENT</div>
 
             <!-- G-Code Viewer (Canvas) -->
             <div class="flex-grow border-2 border-black flex flex-col min-h-0">
-                <div class="bg-black text-white px-4 py-1 text-xs font-bold border-b-2 border-black">G-CODE PREVIEW <span class="text-orange-500">(125mm Diameter)</span></div>
+                <div class="bg-black text-white px-4 py-1 text-xs font-bold border-b-2 border-black">G-CODE PREVIEW <span class="text-orange-500">(125mm Diameter)</span> <span class="float-right font-normal">BLACK = DRAW · <span class="text-orange-300">ORANGE = TRAVEL (PEN STAYS DOWN)</span></span></div>
                 <div class="flex-grow bg-[#fafafa] flex items-center justify-center p-2 overflow-hidden">
                     <canvas id="gcode-canvas" width="500" height="500" class="border-[3px] border-black shadow-[inset_0_4px_12px_rgba(0,0,0,0.1)] bg-white rounded-full max-h-full max-w-full object-contain aspect-square"></canvas>
                 </div>
@@ -142,7 +142,7 @@
                 </summary>
                 <div class="p-6 text-sm leading-relaxed bg-white">
                     <p class="mb-4">The Polar Plotter uses an absolute coordinate system, but stepper motors are "dumb" and do not know where they are when they power on.</p>
-                    <p>Clicking the <strong>Home Arm</strong> button forces the arm motor to extend towards the center of the build plate until it hits its physical hard limit. The system then declares this point as <code>X:0 Y:0</code>. You should always ensure the pen is positioned exactly at the center of the plate before starting a stream.</p>
+                    <p>Clicking the <strong>Home Arm</strong> button forces the arm motor to extend towards the center of the build plate until it hits its physical hard limit. The system then declares this point as <code>X:0 Y:0</code>. The arm also homes automatically every time the plotter powers on. You should always ensure the pen is positioned exactly at the center of the plate before starting a stream.</p>
                 </div>
             </details>
         </div>

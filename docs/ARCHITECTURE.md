@@ -15,6 +15,7 @@ This document serves as the exhaustive, definitive reference manual for understa
 ### Microcontroller & Motors
 The brain of the system is the **NodeMCU v2 ESP8266** microcontroller, chosen for its built-in WiFi capabilities and low cost.
 The physical movement is driven by two **28BYJ-48 Stepper Motors**, which are controlled by **ULN2003** Darlington transistor array driver boards.
+Both driver boards take their 5V and GND directly from the NodeMCU, so the entire machine is powered from a single USB port. No separate power supply is used.
 
 ### Half-Step Sequencing (`HALF4WIRE`)
 The `AccelStepper` library is configured to use `HALF4WIRE` mode. Instead of firing one coil at a time (full stepping), the driver alternates between firing one coil and two coils simultaneously. This doubles the resolution of the motor from 2048 steps per revolution to 4096 steps per revolution, providing incredibly smooth and precise drawing capabilities at the cost of slightly lower top speed.
@@ -31,7 +32,7 @@ In earlier firmware versions, the homing sequence and the WiFi radio started at 
 **The Fix:** The `setup()` function was rewritten to enforce a strict sequence:
 1. A 1000ms `delay()` to allow the physical power supply capacitors to charge.
 2. The mechanical homing sequence runs to completion.
-3. Only *after* the motors stop moving does the firmware call `WiFi.mode()` to turn on the radio.
+3. Only *after* the motors stop moving does the firmware start `WiFiManager` (`autoConnect()`), which turns on the radio.
 
 ### Motor Inertia & Acceleration Profiles
 Stepper motors cannot instantly jump to high speeds. Initially, the homing sequence used `armStepper.runSpeed()` at 800 RPM. This bypassed the physical acceleration curves, causing the internal magnetic field of the motor to slip past the rotor (stalling).
@@ -56,10 +57,10 @@ The operating systems of devices on the network (macOS Bonjour, Windows mDNSResp
 A `.gcode` file can easily exceed 50,000 lines of text. The ESP8266 only has ~80KB of RAM and cannot store the entire file. We cannot use standard HTTP POST requests, as the overhead of opening and closing TCP connections for every single line of G-code would introduce massive latency and stuttering.
 Instead, we use a single, persistent **WebSocket** connection.
 To manage the flow of data, we use a "Ping-Pong" handshake:
-1. The Web App fires the first 4 lines of G-code over the socket.
+1. The Web App fires up to 4 lines of G-code over the socket.
 2. The ESP8266 places them in its tiny internal buffer.
 3. Every time the ESP8266 finishes processing a line and removes it from the buffer, it transmits the string `"ok"` back over the WebSocket.
-4. The Web App listens for `"ok"`. The moment it receives it, it fires exactly one more line of G-code.
+4. The Web App counts every line it has sent (including manual `M100`/`M101` commands) and every `"ok"` it has received. Whenever fewer than 4 lines are in flight, it sends the next one.
 This guarantees that the ESP8266's tiny RAM is never over-filled, while ensuring it always has the next physical movement pre-loaded to prevent mechanical stuttering.
 
 ---
@@ -76,7 +77,7 @@ int bufferHead = 0;
 int bufferTail = 0;
 int bufferCount = 0;
 ```
-As WebSocket packets arrive in the background, the `webSocketEvent` interrupt fires and places the raw string into the `gcodeBuffer` at the `bufferHead` index.
+As WebSocket packets arrive in the background, the `webSocketEvent` callback (run from `webSocket.loop()` at the top of `loop()`, not from an interrupt) places the raw string into the `gcodeBuffer` at the `bufferHead` index.
 Simultaneously, the main `loop()` checks if `bufferCount > 0`. If it is, and the motors aren't currently busy, it pulls the oldest string from the `bufferTail` index, parses it, and decrements the `bufferCount`. 
 
 ### The Non-Blocking `loop()`
@@ -106,6 +107,8 @@ We extended standard G-code with custom commands specific to this architecture:
 - **`G90` (Absolute):** If the command is `G1 X10`, the target X becomes exactly `10`.
 - **`G91` (Relative):** If the command is `G1 X10`, the target X becomes `current_x + 10`.
 
+> **Known firmware limitations:** in `G91` mode, `current_x` is still the *start* of the previous move when the offset is added, so relative moves accumulate incorrectly. `G28` sets the target to the origin without updating the start point, so it does not move the pen. The Web App works around both by converting all input to absolute `G0`/`G1` moves before streaming (see Section 9).
+
 ---
 
 ## 5. Core Kinematics: Cartesian to Polar Math
@@ -115,7 +118,7 @@ The most computationally heavy part of the firmware is translating the targeted 
 ### The Math & Reversing Direction
 ```cpp
 const float PLATE_STEPS_PER_REV = 13920.0;
-const float STEPS_PER_MM_ARM = -3500.0 / 66.0; 
+const float STEPS_PER_MM_ARM = -3800.0 / 66.0; 
 
 void cartesianToPolarSteps(float x_mm, float y_mm, long &outPlateSteps, long &outArmSteps) {
   float r_mm = sqrt(x_mm * x_mm + y_mm * y_mm);
@@ -209,37 +212,39 @@ The firmware intercepts any move starting at `(0,0)`. It pre-calculates the fina
 The control interface (`web/index.html`) is a standalone Single Page Application (SPA). It is built entirely in Vanilla HTML, CSS, and JavaScript. It does not require Node.js, Python, or any backend server to function. 
 
 ### Styling & UI
-The design utilizes a modern "Glassmorphism" aesthetic, heavily leveraging CSS Grid, linear gradients, semi-transparent backgrounds (`rgba`), and background blurs (`backdrop-filter: blur(12px)`). It is divided into logical cards:
-1. **Connection:** For establishing the WebSocket link.
-2. **Tuning & Control:** For updating Backlash parameters live and triggering manual Homing.
-3. **Streamer:** For uploading multi-megabyte `.gcode` files and rendering the live progress bar.
-4. **Quick Shapes:** A pure-math generation suite for testing.
+The design is a minimal black-and-white, monospace (Space Mono) interface with orange accents, styled with Tailwind CSS (loaded from a CDN). It is organized into:
+1. **Header:** The WebSocket address, **Connect**, and **Home Arm** (disabled while streaming).
+2. **Start tab:** Quick Shapes and System Tuning (live backlash settings and a calibration test).
+3. **Stream tab:** File loading, the live progress bar, and a G-code preview canvas.
+4. **Guide tab:** WiFi setup, calibration, and homing instructions.
+5. **System console:** A log of connection events and transmitted commands.
 
 ### The JavaScript File API
-When a user selects a `.gcode` file, the JS `FileReader` API loads the entire file into the browser's RAM as a single massive string. It splits this string using a Regular Expression (`text.split(/\r?\n/)`) to account for different OS line endings, filtering out blank lines, and pushing them into the `gcodeLines` array.
+When a user selects a `.gcode` file, the JS `FileReader` API loads the entire file into the browser's RAM as a single massive string. It splits this string using a Regular Expression (`text.split(/\r?\n/)`) to account for different OS line endings, and passes the lines to `normalizeGCode()`. This converts the file into the subset of G-code the firmware handles reliably:
+- `G91` relative moves and `G28` are resolved into absolute `G0`/`G1` moves (see the known limitations in Section 4).
+- Lines the firmware ignores (`G21`, Z-only moves, feed rates, `M3`, ...) are dropped, so they don't cost a WebSocket round-trip.
+- `G1` moves shorter than 0.5mm are merged to prevent stuttering. The end point of each stroke is always kept.
+
+The result is stored in the `gcodeLines` array. The preview draws `G1` moves in black and `G0` travel moves in orange. Because the firmware has no pen lift, travel moves are drawn on paper too.
+
+The backlash inputs are entered in degrees and millimetres. The Web App converts them to steps using `PLATE_STEPS_PER_REV` and `ARM_STEPS_PER_MM`, which mirror the firmware constants and must be kept in sync with `firmware/src/main.cpp`.
 
 ### Quick Shapes (Trigonometry Generators)
 To allow users to test the plotter without needing complex external CAD and Slicer software, the Web App features built-in mathematical generators.
-When the user clicks the "Hexagon" button, JavaScript dynamically creates an array of perfectly scaled G-code.
+Each shape is a regular polygon (or, for the star, a star polygon) generated with basic trigonometry: `cos(theta)` for X and `sin(theta)` for Y.
 ```javascript
-function generatePolygon(sides, radius) {
-    let gcode = ["G21", "G90", "G0 Z5"];
+function generatePolygon(sides, radius, rotation = Math.PI / 2, step = 1) {
+    const gcode = ['G21', 'G90'];
     for (let i = 0; i <= sides; i++) {
-        let angle = (i * 2 * Math.PI / sides) + (Math.PI / 2);
-        let x = (Math.cos(angle) * radius).toFixed(2);
-        let y = (Math.sin(angle) * radius).toFixed(2);
-        if (i === 0) {
-            gcode.push(`G0 X${x} Y${y}`);
-            gcode.push("G1 Z-1 F500"); // Pen down
-        } else {
-            gcode.push(`G1 X${x} Y${y}`);
-        }
+        const angle = (i * step * 2 * Math.PI / sides) + rotation;
+        const x = (Math.cos(angle) * radius).toFixed(2);
+        const y = (Math.sin(angle) * radius).toFixed(2);
+        gcode.push(`${i === 0 ? 'G0' : 'G1'} X${x} Y${y}`);
     }
-    gcode.push("G0 Z5"); // Pen up
     return gcode;
 }
 ```
-By utilizing basic trigonometry (`cos(theta)` for X, `sin(theta)` for Y), the app plots vertices around a circle. It automatically injects Z-axis commands (`G0 Z5` to lift the pen, `G1 Z-1` to drop it) ensuring the shapes are drawn cleanly without dragging ink between shapes.
+The first vertex is reached with a `G0` travel move from the origin. Because there is no pen lift, this travel move leaves a line from the centre to the shape.
 
 ---
 
