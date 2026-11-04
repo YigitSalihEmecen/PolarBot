@@ -212,12 +212,12 @@ The firmware intercepts any move starting at `(0,0)`. It pre-calculates the fina
 The control interface (`web/index.html`) is a standalone Single Page Application (SPA). It is built entirely in Vanilla HTML, CSS, and JavaScript. It does not require Node.js, Python, or any backend server to function. 
 
 ### Styling & UI
-The design is a minimal black-and-white, monospace (Space Mono) interface with orange accents, styled with Tailwind CSS (loaded from a CDN). It is organized into:
+The design is calm and minimal: warm off-white paper, near-black ink, one clay-orange accent, a serif for headings (Source Serif 4) and Inter for text. It is plain CSS in `web/style.css` with every colour as a custom property; the only external resource is Google Fonts, with system fallbacks. It is organized into:
 1. **Header:** The WebSocket address, **Connect**, and **Home Arm** (disabled while streaming).
-2. **Start tab:** Quick Shapes and System Tuning (live backlash settings and a calibration test).
+2. **Start tab:** Quick shapes (each button's icon is drawn from the shape's own G-code) and Backlash (live settings and a calibration test).
 3. **Stream tab:** File loading, the live progress bar, and a G-code preview canvas.
 4. **Guide tab:** WiFi setup, calibration, and homing instructions.
-5. **System console:** A log of connection events and transmitted commands.
+5. **Console:** A log of connection events and transmitted commands.
 
 ### The JavaScript File API
 When a user selects a `.gcode` file, the JS `FileReader` API loads the entire file into the browser's RAM as a single massive string. It splits this string using a Regular Expression (`text.split(/\r?\n/)`) to account for different OS line endings, and passes the lines to `normalizeGCode()`. This converts the file into the subset of G-code the firmware handles reliably:
@@ -225,7 +225,7 @@ When a user selects a `.gcode` file, the JS `FileReader` API loads the entire fi
 - Lines the firmware ignores (`G21`, Z-only moves, feed rates, `M3`, ...) are dropped, so they don't cost a WebSocket round-trip.
 - `G1` moves shorter than 0.5mm are merged to prevent stuttering. The end point of each stroke is always kept.
 
-The result is stored in the `gcodeLines` array. The preview draws `G1` moves in black and `G0` travel moves in orange. Because the firmware has no pen lift, travel moves are drawn on paper too.
+The result is stored in the `gcodeLines` array. The preview draws `G1` moves as solid ink lines and `G0` travel moves as dashed orange lines, at the screen's pixel density. Because the firmware has no pen lift, travel moves are drawn on paper too.
 
 The backlash inputs are entered in degrees and millimetres. The Web App converts them to steps using `PLATE_STEPS_PER_REV` and `ARM_STEPS_PER_MM`, which mirror the firmware constants and must be kept in sync with `firmware/src/main.cpp`.
 

@@ -3,165 +3,199 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>POLAR_BOT</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <title>PolarBot · Control panel</title>
+    <meta name="description" content="Browser control panel for PolarBot, a WiFi polar plotter: preview and stream G-code, draw test shapes and tune backlash.">
+    <meta name="theme-color" content="#FAF9F5">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%23141413' stroke-width='2.5'/%3E%3Cpath d='M16 16 L26 9' stroke='%23D97757' stroke-width='2.5' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='16' r='2.5' fill='%23141413'/%3E%3C/svg%3E">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
-<body class="min-h-screen p-8 flex flex-col max-w-6xl mx-auto selection:bg-black selection:text-white">
+<body>
 
-    <!-- HEADER -->
-    <header class="flex flex-col md:flex-row justify-between items-center mb-8 border-b-[3px] border-black pb-4 gap-4 shrink-0">
-        <div class="text-3xl font-bold tracking-tighter">POLAR<span class="text-orange-500">_BOT</span></div>
-        
-        <!-- TABS -->
-        <nav class="flex space-x-8 text-sm" id="tab-nav">
-            <button class="tab-btn font-bold text-orange-500 border-b-[3px] border-orange-500 pb-1 transition-colors" data-target="0">START</button>
-            <button class="tab-btn text-gray-500 hover:text-orange-500 border-b-[3px] border-transparent hover:border-orange-500 pb-1 transition-colors" data-target="1">STREAM</button>
-            <button class="tab-btn text-gray-500 hover:text-orange-500 border-b-[3px] border-transparent hover:border-orange-500 pb-1 transition-colors" data-target="2">GUIDE</button>
+    <header class="top">
+        <a class="brand" href="#" aria-label="PolarBot">
+            <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+                <circle cx="16" cy="16" r="13" />
+                <path d="M16 16 L26 9" />
+                <circle class="hub" cx="16" cy="16" r="2.5" />
+            </svg>
+            <span>PolarBot</span>
+        </a>
+
+        <nav class="tabs" id="tab-nav" role="tablist">
+            <button class="tab-btn" role="tab" data-target="0">Start</button>
+            <button class="tab-btn" role="tab" data-target="1">Stream</button>
+            <button class="tab-btn" role="tab" data-target="2">Guide</button>
         </nav>
-        
-        <!-- ACTIONS -->
-        <div class="flex space-x-2 text-sm">
-            <input type="text" id="ws-url" value="ws://polarplotter.local:81" class="border-2 border-black px-3 py-1 w-48 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent">
-            <button id="btn-connect" class="border-2 border-black bg-black text-white px-4 py-1 hover:bg-orange-500 hover:border-orange-500 transition-colors font-bold">CONNECT</button>
-            <button id="btn-home" disabled class="border-2 border-black px-4 py-1 hover:bg-orange-500 hover:border-orange-500 hover:text-white transition-colors disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-black disabled:hover:border-black font-bold">HOME ARM</button>
+
+        <div class="conn">
+            <span class="status" id="conn-status" data-state="offline"><i></i><span>Offline</span></span>
+            <input type="text" id="ws-url" value="ws://polarplotter.local:81" spellcheck="false" aria-label="Plotter address">
+            <button id="btn-connect" class="btn primary">Connect</button>
+            <button id="btn-home" class="btn" disabled>Home arm</button>
         </div>
     </header>
 
-    <!-- MAIN CONTENT AREA -->
-    <main class="relative w-full flex-grow flex flex-col overflow-hidden min-h-0">
-        <!-- SLIDER CONTAINER -->
-        <div id="tab-slider" class="flex w-[300%] h-full transition-transform duration-500 ease-in-out transform translate-x-0">
+    <p class="notice" id="https-notice" hidden>
+        You're viewing the hosted copy. Browsers don't allow an HTTPS page to open the plotter's
+        <code>ws://</code> connection, so this copy can preview G-code but not drive the machine.
+        To plot, <a href="https://github.com/YigitSalihEmecen/PolarBot/archive/refs/heads/main.zip">download the repository</a>
+        and open <code>web/index.html</code> from disk.
+    </p>
 
-        <!-- TAB 1: START -->
-        <div id="tab-start" class="tab-pane w-1/3 h-full flex flex-col md:flex-row gap-8 pr-4">
-            
-            <!-- Quick Shapes -->
-            <div class="flex-1 border-2 border-black p-6 flex flex-col">
-                <h2 class="text-xl font-bold mb-6 border-b-2 border-black pb-2 uppercase text-orange-500">Quick Shapes (Ø100mm)</h2>
-                <p class="text-sm text-gray-600 mb-6">Click a shape to instantly generate perfectly scaled G-code. Then switch to the Stream tab to preview and execute.</p>
-                <div class="grid grid-cols-2 gap-4 flex-grow content-start">
-                    <button class="shape-btn border-2 border-black py-4 font-bold hover:bg-orange-500 hover:border-orange-500 hover:text-white transition-colors" data-shape="triangle">TRIANGLE</button>
-                    <button class="shape-btn border-2 border-black py-4 font-bold hover:bg-orange-500 hover:border-orange-500 hover:text-white transition-colors" data-shape="square">SQUARE</button>
-                    <button class="shape-btn border-2 border-black py-4 font-bold hover:bg-orange-500 hover:border-orange-500 hover:text-white transition-colors" data-shape="pentagon">PENTAGON</button>
-                    <button class="shape-btn border-2 border-black py-4 font-bold hover:bg-orange-500 hover:border-orange-500 hover:text-white transition-colors" data-shape="hexagon">HEXAGON</button>
-                    <button class="shape-btn border-2 border-black py-4 font-bold hover:bg-orange-500 hover:border-orange-500 hover:text-white transition-colors col-span-2" data-shape="star">STAR</button>
-                </div>
+    <main>
+        <!-- START -->
+        <section id="tab-start" class="pane" role="tabpanel">
+            <div class="intro">
+                <h1>Draw on a turning plate.</h1>
+                <p>PolarBot spins the paper and slides the pen along a single arm. Pick a shape to try it,
+                   or load your own G-code in Stream.</p>
             </div>
 
-            <!-- Tuning -->
-            <div class="w-full md:w-1/3 border-2 border-black p-6 flex flex-col">
-                <h2 class="text-xl font-bold mb-6 border-b-2 border-black pb-2 uppercase text-orange-500">System Tuning</h2>
-                <div class="mb-4">
-                    <label class="block text-sm font-bold mb-2">PLATE BACKLASH (DEGREES)</label>
-                    <input type="number" step="0.01" min="0" id="val-plate" class="w-full border-2 border-black px-4 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+            <div class="grid">
+                <div class="card">
+                    <div class="card-head">
+                        <h2>Quick shapes</h2>
+                        <span class="meta">Ø 100 mm</span>
+                    </div>
+                    <p class="muted">Each shape is generated to scale and opened in Stream for a preview before anything moves.</p>
+                    <div class="shapes">
+                        <button class="shape-btn" data-shape="triangle"><svg></svg><span>Triangle</span></button>
+                        <button class="shape-btn" data-shape="square"><svg></svg><span>Square</span></button>
+                        <button class="shape-btn" data-shape="pentagon"><svg></svg><span>Pentagon</span></button>
+                        <button class="shape-btn" data-shape="hexagon"><svg></svg><span>Hexagon</span></button>
+                        <button class="shape-btn" data-shape="star"><svg></svg><span>Star</span></button>
+                    </div>
                 </div>
-                <div class="mb-4">
-                    <label class="block text-sm font-bold mb-2">ARM BACKLASH (MM)</label>
-                    <input type="number" step="0.01" min="0" id="val-arm" class="w-full border-2 border-black px-4 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent">
-                </div>
-                <button id="btn-calibration" class="w-full border-2 border-black py-2 mb-4 font-bold hover:bg-orange-500 hover:border-orange-500 hover:text-white transition-colors">DRAW CALIBRATION TEST</button>
-                <div class="flex-grow"></div>
-                <button id="btn-update" disabled class="w-full border-2 border-black bg-black text-white py-3 font-bold hover:bg-orange-500 hover:border-orange-500 transition-colors disabled:opacity-20 disabled:hover:bg-black disabled:hover:border-black">UPDATE Live Settings</button>
-                <button id="btn-how-to-cal" class="w-full text-center text-xs underline mt-2 text-gray-500 hover:text-orange-500">How to calibrate?</button>
-            </div>
-        </div>
 
-        <!-- TAB 2: STREAM -->
-        <div id="tab-stream" class="tab-pane w-1/3 h-full flex flex-col px-4">
-            <div class="flex flex-col md:flex-row justify-between items-end md:items-center mb-4 gap-4">
-                <div class="flex items-center gap-4 w-full md:w-auto">
-                    <label class="border-2 border-black px-6 py-2 cursor-pointer hover:bg-orange-500 hover:border-orange-500 hover:text-white transition-colors font-bold text-center">
-                        LOAD FILE
-                        <input type="file" id="file-input" accept=".gcode,.nc,.txt" class="hidden">
+                <div class="card">
+                    <div class="card-head">
+                        <h2>Backlash</h2>
+                        <span class="meta">Live tuning</span>
+                    </div>
+                    <p class="muted">The motor gearboxes lose a little motion when they reverse. Measure it with the test, then send the correction.</p>
+
+                    <label class="field">
+                        <span>Plate</span>
+                        <span class="input-unit"><input type="number" step="0.01" min="0" id="val-plate"><em>deg</em></span>
                     </label>
-                    <span id="file-name" class="text-sm truncate w-48 font-bold text-orange-500">No file selected</span>
-                </div>
-                <button id="btn-stream" disabled class="border-2 border-black bg-black text-white px-8 py-2 font-bold hover:bg-orange-500 hover:border-orange-500 transition-colors disabled:opacity-20 disabled:hover:bg-black disabled:hover:border-black w-full md:w-auto">START STREAMING</button>
-            </div>
-            
-            <!-- Progress Bar -->
-            <div class="w-full border-2 border-black h-4 mb-2">
-                <div id="progress-fill" class="bg-orange-500 h-full w-0 transition-all duration-100"></div>
-            </div>
-            <div class="text-right text-xs font-bold mb-4" id="progress-text">0 / 0 LINES SENT</div>
+                    <label class="field">
+                        <span>Arm</span>
+                        <span class="input-unit"><input type="number" step="0.01" min="0" id="val-arm"><em>mm</em></span>
+                    </label>
 
-            <!-- G-Code Viewer (Canvas) -->
-            <div class="flex-grow border-2 border-black flex flex-col min-h-0">
-                <div class="bg-black text-white px-4 py-1 text-xs font-bold border-b-2 border-black">G-CODE PREVIEW <span class="text-orange-500">(125mm Diameter)</span> <span class="float-right font-normal">BLACK = DRAW · <span class="text-orange-300">ORANGE = TRAVEL (PEN STAYS DOWN)</span></span></div>
-                <div class="flex-grow bg-[#fafafa] flex items-center justify-center p-2 overflow-hidden">
-                    <canvas id="gcode-canvas" width="500" height="500" class="border-[3px] border-black shadow-[inset_0_4px_12px_rgba(0,0,0,0.1)] bg-white rounded-full max-h-full max-w-full object-contain aspect-square"></canvas>
+                    <div class="stack">
+                        <button id="btn-calibration" class="btn">Draw calibration test</button>
+                        <button id="btn-update" class="btn primary" disabled>Send to plotter</button>
+                    </div>
+                    <button id="btn-how-to-cal" class="linkbtn">How to calibrate →</button>
                 </div>
             </div>
-        </div>
+        </section>
 
-        <!-- TAB 3: GUIDE -->
-        <div id="tab-guide" class="tab-pane w-1/3 h-full overflow-y-auto pl-4 pr-2">
-            <h2 class="text-2xl font-bold mb-8 uppercase border-b-[3px] border-black pb-2 text-orange-500">System Guide & Documentation</h2>
-            
-            <details class="mb-4 border-2 border-black group">
-                <summary class="font-bold p-4 bg-[#fafafa] cursor-pointer group-open:border-b-2 border-black flex justify-between items-center select-none hover:bg-orange-50 hover:text-orange-600 transition-colors">
-                    HOW TO CONNECT TO WIFI
-                    <span class="group-open:rotate-180 transition-transform">▼</span>
-                </summary>
-                <div class="p-6 text-sm leading-relaxed bg-white">
-                    <p class="mb-2">When the ESP8266 is turned on without saved credentials, it behaves as an Access Point.</p>
-                    <ol class="list-decimal pl-5 space-y-2">
-                        <li>Open your computer or phone's WiFi settings and connect to the network named <strong>PolarPlotter-Setup</strong>.</li>
-                        <li>A configuration portal should automatically pop up. If it doesn't, navigate to <strong>http://192.168.4.1</strong> in your browser.</li>
-                        <li>Select your home WiFi network from the list and enter your password.</li>
-                        <li>The ESP8266 will save these settings permanently and restart.</li>
-                        <li>Ensure your computer is on the same home network, and simply click <strong>Connect</strong> in this Web App!</li>
-                    </ol>
+        <!-- STREAM -->
+        <section id="tab-stream" class="pane" role="tabpanel">
+            <div class="stream">
+                <div class="card preview">
+                    <div class="card-head">
+                        <h2>Preview</h2>
+                        <span class="meta">Ø 125 mm plate</span>
+                    </div>
+                    <div class="plate">
+                        <canvas id="gcode-canvas" width="500" height="500"></canvas>
+                    </div>
+                    <div class="legend">
+                        <span><i class="swatch draw"></i>Draw</span>
+                        <span><i class="swatch travel"></i>Travel (the pen stays down)</span>
+                    </div>
                 </div>
-            </details>
-            
-            <details id="guide-calibrate" class="mb-4 border-2 border-black group">
-                <summary class="font-bold p-4 bg-[#fafafa] cursor-pointer group-open:border-b-2 border-black flex justify-between items-center select-none hover:bg-orange-50 hover:text-orange-600 transition-colors">
-                    HOW TO CALIBRATE BACKLASH
-                    <span class="group-open:rotate-180 transition-transform">▼</span>
-                </summary>
-                <div class="p-6 text-sm leading-relaxed bg-white">
-                    <p class="mb-4">The internal reduction gears inside the 28BYJ-48 stepper motors have microscopic physical gaps between their teeth. This is known as "Backlash". When a motor reverses direction, the internal shaft must turn several degrees before the physical outer gears actually engage and begin pushing the arm.</p>
-                    <p class="mb-4 font-bold text-orange-500">How to calibrate:</p>
-                    <ol class="list-decimal pl-5 space-y-2">
-                        <li>Click the <strong>DRAW CALIBRATION TEST</strong> button in the Start tab. This draws a 40x40mm square with a crosshair inside.</li>
-                        <li>Use a caliper to measure the physical square drawn on the paper. If the square is 38x38mm, you are missing 2mm of movement due to Arm backlash.</li>
-                        <li>Enter your measured discrepancy into the <strong>ARM BACKLASH (MM)</strong> box.</li>
-                        <li>If the lines of the crosshair do not perfectly align or the corners of the square are wobbly, adjust the <strong>PLATE BACKLASH (DEGREES)</strong> slightly (try increments of 0.5 degrees).</li>
-                        <li>Click <strong>UPDATE Live Settings</strong> and draw the test again until the shape is perfect!</li>
-                    </ol>
-                </div>
-            </details>
 
-            <details class="mb-4 border-2 border-black group">
-                <summary class="font-bold p-4 bg-[#fafafa] cursor-pointer group-open:border-b-2 border-black flex justify-between items-center select-none hover:bg-orange-50 hover:text-orange-600 transition-colors">
-                    WHAT IS HOMING?
-                    <span class="group-open:rotate-180 transition-transform">▼</span>
-                </summary>
-                <div class="p-6 text-sm leading-relaxed bg-white">
-                    <p class="mb-4">The Polar Plotter uses an absolute coordinate system, but stepper motors are "dumb" and do not know where they are when they power on.</p>
-                    <p>Clicking the <strong>Home Arm</strong> button forces the arm motor to extend towards the center of the build plate until it hits its physical hard limit. The system then declares this point as <code>X:0 Y:0</code>. The arm also homes automatically every time the plotter powers on. You should always ensure the pen is positioned exactly at the center of the plate before starting a stream.</p>
-                </div>
-            </details>
-        </div>
+                <aside class="card side">
+                    <div class="card-head"><h2>Program</h2></div>
 
-        </div> <!-- End Slider -->
+                    <label class="file">
+                        <input type="file" id="file-input" accept=".gcode,.nc,.txt">
+                        <span class="file-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>
+                        </span>
+                        <span class="file-text">
+                            <strong id="file-name">No file selected</strong>
+                            <span class="muted">Click to load a .gcode, .nc or .txt file</span>
+                        </span>
+                    </label>
+
+                    <div class="progress">
+                        <div class="progress-track"><div id="progress-fill"></div></div>
+                        <div class="progress-text" id="progress-text">0 of 0 lines sent</div>
+                    </div>
+
+                    <button id="btn-stream" class="btn primary wide" disabled>Start streaming</button>
+
+                    <p class="muted small">Put the pen at the centre of the plate (or home the arm) before you start.
+                       Files are converted to absolute moves and very short segments are merged.</p>
+                </aside>
+            </div>
+        </section>
+
+        <!-- GUIDE -->
+        <section id="tab-guide" class="pane" role="tabpanel">
+            <div class="intro">
+                <h1>Guide</h1>
+                <p>Setting up the network, calibrating, and what homing does.</p>
+            </div>
+
+            <div class="accordion">
+                <details>
+                    <summary>Connecting to WiFi</summary>
+                    <div class="body">
+                        <p>When the ESP8266 starts without saved credentials, it opens its own access point.</p>
+                        <ol>
+                            <li>On your computer or phone, join the network <strong>PolarPlotter-Setup</strong>.</li>
+                            <li>A setup portal should open. If it doesn't, go to <code>http://192.168.4.1</code>.</li>
+                            <li>Pick your home network and enter its password.</li>
+                            <li>The board saves the settings and restarts.</li>
+                            <li>With your computer on the same network, click <strong>Connect</strong> here.</li>
+                        </ol>
+                        <p class="muted">If <code>polarplotter.local</code> doesn't resolve on your network, replace it with the board's IP address.</p>
+                    </div>
+                </details>
+
+                <details id="guide-calibrate">
+                    <summary>Calibrating backlash</summary>
+                    <div class="body">
+                        <p>The reduction gears inside the 28BYJ-48 motors have small gaps between their teeth. When a motor reverses, the shaft turns a little before the gears engage, so some motion is lost. This is backlash.</p>
+                        <ol>
+                            <li>Click <strong>Draw calibration test</strong> in Start. It draws a 40 × 40 mm square with a crosshair.</li>
+                            <li>Measure the square with a caliper. If it is 38 × 38 mm, the arm is losing 2 mm.</li>
+                            <li>Enter that shortfall as the <strong>Arm</strong> backlash.</li>
+                            <li>If the crosshair lines don't meet or the corners wobble, adjust the <strong>Plate</strong> backlash in steps of about 0.5°.</li>
+                            <li>Click <strong>Send to plotter</strong> and draw the test again until the square is right.</li>
+                        </ol>
+                        <p class="muted">Values are not saved on the plotter; it starts with its built-in defaults after every power-on.</p>
+                    </div>
+                </details>
+
+                <details>
+                    <summary>What homing does</summary>
+                    <div class="body">
+                        <p>Stepper motors don't know where they are when they power on. Homing drives the arm toward the centre of the plate until it reaches its mechanical stop, and calls that point <code>X0 Y0</code>.</p>
+                        <p>The arm homes automatically at every power-on. Make sure the pen sits exactly at the centre of the plate before you start a stream.</p>
+                    </div>
+                </details>
+            </div>
+        </section>
     </main>
 
-    <!-- SYSTEM CONSOLE -->
-    <div class="mt-8 border-2 border-black h-48 flex flex-col shrink-0">
-        <div class="bg-black text-white px-4 py-1 text-xs font-bold flex justify-between">
-            <span>SYSTEM_CONSOLE</span>
-            <span id="conn-status" class="text-orange-500">OFFLINE</span>
+    <section class="console">
+        <div class="console-head">
+            <span>Console</span>
+            <button class="linkbtn" id="btn-clear">Clear</button>
         </div>
-        <div id="terminal" class="flex-grow p-4 overflow-y-auto text-xs space-y-1 bg-white font-mono leading-tight">
-            <!-- Logs injected here -->
-        </div>
-    </div>
+        <div id="terminal"></div>
+    </section>
 
-    <!-- JAVASCRIPT LOGIC -->
     <script src="app.js"></script>
 </body>
 </html>

@@ -46,14 +46,10 @@ function log(message, type = 'system') {
     const time = document.createElement('span');
     const text = document.createElement('span');
 
-    time.className = 'text-gray-400 mr-2';
-    time.textContent = `[${new Date().toLocaleTimeString('en-US', { hour12: false })}]`;
+    time.className = 't';
+    time.textContent = new Date().toLocaleTimeString('en-GB', { hour12: false });
 
-    text.className = {
-        error: 'text-red-600 font-bold',
-        rx: 'text-blue-600',
-        tx: 'text-green-600',
-    }[type] || 'text-black';
+    text.className = { error: 'log-error', rx: 'log-rx', tx: 'log-tx' }[type] || '';
     text.textContent = message;
 
     div.append(time, text);
@@ -66,18 +62,17 @@ function isConnected() {
 }
 
 function switchTab(targetIndex) {
-    const slider = document.getElementById('tab-slider');
-    // Each tab is 1/3 of the 300% container, so move by 33.3333% per tab
-    slider.style.transform = `translateX(-${targetIndex * 33.3333}%)`;
-
-    document.querySelectorAll('.tab-btn').forEach((btn, index) => {
-        const active = index === parseInt(targetIndex);
-        btn.classList.toggle('font-bold', active);
-        btn.classList.toggle('text-orange-500', active);
-        btn.classList.toggle('border-orange-500', active);
-        btn.classList.toggle('text-gray-500', !active);
-        btn.classList.toggle('border-transparent', !active);
+    const index = parseInt(targetIndex);
+    document.querySelectorAll('.pane').forEach((pane, i) => pane.classList.toggle('active', i === index));
+    document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+        btn.classList.toggle('active', i === index);
+        btn.setAttribute('aria-selected', i === index);
     });
+}
+
+function setStatus(state) {
+    connStatus.dataset.state = state;
+    connStatus.lastElementChild.textContent = { online: 'Connected', connecting: 'Connecting' }[state] || 'Offline';
 }
 
 document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -88,16 +83,16 @@ function updateButtons() {
     btnUpdate.disabled = !isConnected();
     btnHome.disabled = !isConnected() || isStreaming;
     btnStream.disabled = !isConnected() || gcodeLines.length === 0;
-    btnStream.textContent = isStreaming ? 'PAUSE STREAMING'
-        : currentLineIdx > 0 ? 'RESUME STREAMING' : 'START STREAMING';
-    btnStream.classList.toggle('bg-yellow-500', isStreaming);
-    btnStream.classList.toggle('bg-black', !isStreaming);
+    btnStream.textContent = isStreaming ? 'Pause streaming'
+        : currentLineIdx > 0 ? 'Resume streaming' : 'Start streaming';
+    btnStream.classList.toggle('accent', isStreaming);
+    btnStream.classList.toggle('primary', !isStreaming);
 }
 
 function updateProgress() {
     const pct = gcodeLines.length ? (currentLineIdx / gcodeLines.length) * 100 : 0;
     progressFill.style.width = `${pct}%`;
-    progressText.textContent = `${currentLineIdx} / ${gcodeLines.length} LINES SENT`;
+    progressText.textContent = `${currentLineIdx.toLocaleString()} of ${gcodeLines.length.toLocaleString()} lines sent`;
 }
 
 /* ==========================================================================
@@ -158,42 +153,70 @@ function normalizeGCode(rawLines) {
 /* ==========================================================================
    4. G-CODE CANVAS VISUALIZER
    The firmware has no pen lift, so G0 travel moves are drawn on paper too.
-   They are shown in orange to make that visible.
+   They are drawn dashed in clay to make that visible.
    ========================================================================== */
 
-function drawGCodePreview(lines) {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+// The canvas is 500 logical px for the 125 mm plate (4 px/mm, origin at the centre),
+// drawn at the screen's pixel density.
+const PREVIEW_PX = 500;
+const PX_PER_MM = 4.0;
+const dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 3));
+canvas.width = canvas.height = PREVIEW_PX * dpr;
 
-    // Background grid (10x10mm squares)
-    ctx.strokeStyle = '#e5e7eb';
+function drawGCodePreview(lines) {
+    const c = PREVIEW_PX / 2;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, PREVIEW_PX, PREVIEW_PX);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, PREVIEW_PX, PREVIEW_PX);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    // 10 mm grid
+    ctx.strokeStyle = '#F0EEE6';
     ctx.lineWidth = 1;
-    for (let i = 0; i <= 500; i += 40) {
-        ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 500); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(500, i); ctx.stroke();
+    for (let i = c % 40; i <= PREVIEW_PX; i += 40) {
+        ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, PREVIEW_PX); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(PREVIEW_PX, i); ctx.stroke();
     }
 
-    // Axis lines
-    ctx.strokeStyle = '#9ca3af';
-    ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(250, 0); ctx.lineTo(250, 500); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(0, 250); ctx.lineTo(500, 250); ctx.stroke();
+    // Axes and the Ø100 mm working circle
+    ctx.strokeStyle = '#D8D5CA';
+    ctx.beginPath(); ctx.moveTo(c, 0); ctx.lineTo(c, PREVIEW_PX); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, c); ctx.lineTo(PREVIEW_PX, c); ctx.stroke();
+    ctx.setLineDash([3, 5]);
+    ctx.beginPath(); ctx.arc(c, c, 50 * PX_PER_MM, 0, Math.PI * 2); ctx.stroke();
+    ctx.setLineDash([]);
 
-    // Canvas dimensions map: 500px = 125mm. Scale = 4px/mm. Origin at (250,250).
-    const scale = 4.0;
-    const toPx = (mmX, mmY) => [250 + mmX * scale, 250 - mmY * scale];
-
-    ctx.lineWidth = 1.5;
+    const toPx = (mmX, mmY) => [c + mmX * PX_PER_MM, c - mmY * PX_PER_MM];
     let [px, py] = toPx(0, 0);
 
+    // Collect strokes so draw lines sit on top of travel lines
+    const draw = new Path2D();
+    const travel = new Path2D();
     for (const line of lines) {
         const m = line.match(/^G([01]) X(-?[\d.]+) Y(-?[\d.]+)$/);
         if (!m) continue;
         const [nx, ny] = toPx(parseFloat(m[2]), parseFloat(m[3]));
-
-        ctx.strokeStyle = m[1] === '0' ? '#fdba74' : '#000000';
-        ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(nx, ny); ctx.stroke();
+        const path = m[1] === '0' ? travel : draw;
+        path.moveTo(px, py);
+        path.lineTo(nx, ny);
         [px, py] = [nx, ny];
     }
+
+    ctx.strokeStyle = '#D97757';
+    ctx.lineWidth = 1.25;
+    ctx.setLineDash([4, 4]);
+    ctx.stroke(travel);
+    ctx.setLineDash([]);
+
+    ctx.strokeStyle = '#141413';
+    ctx.lineWidth = 1.6;
+    ctx.stroke(draw);
+
+    // Plate centre
+    ctx.fillStyle = '#141413';
+    ctx.beginPath(); ctx.arc(c, c, 2.5, 0, Math.PI * 2); ctx.fill();
 }
 
 function loadProgram(rawLines, name) {
@@ -220,22 +243,30 @@ function send(cmd) {
 }
 
 btnConnect.addEventListener('click', () => {
-    if (ws && ws.readyState === WebSocket.CONNECTING) return;
-    if (isConnected()) {
+    if (ws && (ws.readyState === WebSocket.CONNECTING || isConnected())) {
         ws.close();
         return;
     }
 
     const url = wsUrlInput.value;
-    log(`Attempting connection to ${url}...`);
-    ws = new WebSocket(url);
+    log(`Connecting to ${url}...`);
+    try {
+        ws = new WebSocket(url);
+    } catch (err) {
+        // Thrown straight away for a malformed URL, or for ws:// from an HTTPS page
+        log(location.protocol === 'https:'
+            ? 'This browser blocks ws:// connections from an HTTPS page. Open web/index.html from disk to connect.'
+            : `Can't connect: ${err.message}`, 'error');
+        return;
+    }
+    setStatus('connecting');
+    btnConnect.textContent = 'Cancel';
 
     ws.onopen = () => {
         inFlight = 0;
-        btnConnect.textContent = 'DISCONNECT';
-        btnConnect.classList.replace('bg-black', 'bg-red-500');
-        connStatus.textContent = 'ONLINE';
-        connStatus.classList.replace('text-orange-500', 'text-green-400');
+        btnConnect.textContent = 'Disconnect';
+        btnConnect.classList.replace('primary', 'quiet');
+        setStatus('online');
         updateButtons();
         log('Connection established successfully.');
     };
@@ -256,10 +287,9 @@ btnConnect.addEventListener('click', () => {
     };
 
     ws.onclose = () => {
-        btnConnect.textContent = 'CONNECT';
-        btnConnect.classList.replace('bg-red-500', 'bg-black');
-        connStatus.textContent = 'OFFLINE';
-        connStatus.classList.replace('text-green-400', 'text-orange-500');
+        btnConnect.textContent = 'Connect';
+        btnConnect.classList.replace('quiet', 'primary');
+        setStatus('offline');
         if (isStreaming) log('Streaming interrupted.', 'error');
         isStreaming = false;
         inFlight = 0;
@@ -362,11 +392,23 @@ const SHAPES = {
     star: () => generatePolygon(5, 50, Math.PI / 2, 2),
 };
 
+// Draw each shape's own G-code as its button icon
+function shapeIcon(svg, gcode) {
+    const pts = gcode
+        .map(l => l.match(/X(-?[\d.]+) Y(-?[\d.]+)/))
+        .filter(Boolean)
+        .map(m => `${m[1]},${-parseFloat(m[2])}`);
+    svg.setAttribute('viewBox', '-56 -56 112 112');
+    svg.setAttribute('aria-hidden', 'true');
+    svg.innerHTML = `<circle r="54"/><polyline points="${pts.join(' ')}"/>`;
+}
+
 document.querySelectorAll('.shape-btn').forEach(btn => {
+    shapeIcon(btn.querySelector('svg'), SHAPES[btn.dataset.shape]());
     btn.addEventListener('click', (e) => {
         const shape = e.currentTarget.dataset.shape;
         if (!loadProgram(SHAPES[shape](), `Generated ${shape}`)) return;
-        log(`Successfully generated ${shape}.`);
+        log(`Generated ${shape}.`);
         switchTab(1);
     });
 });
@@ -381,14 +423,20 @@ document.getElementById('btn-calibration').addEventListener('click', () => {
         'G0 X0 Y-20', 'G1 X0 Y20',
     ];
     if (!loadProgram(gcode, 'Calibration test')) return;
-    log('Successfully generated Calibration Test Shape.');
+    log('Generated calibration test.');
     switchTab(1);
 });
 
 document.getElementById('btn-how-to-cal').addEventListener('click', () => {
     switchTab(2); // Switch to Guide tab
-    document.getElementById('guide-calibrate').open = true;
+    const section = document.getElementById('guide-calibrate');
+    section.open = true;
+    section.scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
+
+document.getElementById('btn-clear').addEventListener('click', () => { terminal.textContent = ''; });
+
+if (location.protocol === 'https:') document.getElementById('https-notice').hidden = false;
 
 // Initialize defaults to match the firmware's boot-time backlash values
 valPlate.value = (DEFAULT_PLATE_BACKLASH_STEPS * 360.0 / PLATE_STEPS_PER_REV).toFixed(2);
@@ -396,4 +444,4 @@ valArm.value = (DEFAULT_ARM_BACKLASH_STEPS / ARM_STEPS_PER_MM).toFixed(2);
 drawGCodePreview([]);
 updateProgress();
 switchTab(0);
-log('Web App initialized. Ready to connect.');
+log('Ready. Connect to the plotter, or load a program to preview it.');

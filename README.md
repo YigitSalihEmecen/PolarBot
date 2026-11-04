@@ -117,13 +117,15 @@ On first boot, the arm homes itself. The board then opens a WiFi access point ca
 
 ### 3. Open the control panel
 
-Open [`web/index.html`](web/index.html) in a browser on the same network and click **CONNECT**. The default address is `ws://polarplotter.local:81`. If mDNS doesn't resolve on your network, replace the hostname with the board's IP address.
+Open [`web/index.html`](web/index.html) in a browser on the same network and click **Connect**. The default address is `ws://polarplotter.local:81`. If mDNS doesn't resolve on your network, replace the hostname with the board's IP address.
+
+A hosted copy runs at **[yigitsalihemecen.github.io/PolarBot](https://yigitsalihemecen.github.io/PolarBot/)**. It previews G-code and test shapes, but it can't drive the plotter (see [Limitations](#limitations)).
 
 ### 4. Plot
 
-1. Put the pen at the centre of the plate, or click **HOME ARM**.
-2. Try a **Quick Shape**, or load a `.gcode` file in the **STREAM** tab.
-3. Check the preview (125 mm diameter) and click **START STREAMING**.
+1. Put the pen at the centre of the plate, or click **Home arm**.
+2. Try a **Quick shape**, or load a `.gcode` file in the **Stream** tab.
+3. Check the preview (125 mm diameter) and click **Start streaming**.
 
 ---
 
@@ -137,7 +139,7 @@ Open [`web/index.html`](web/index.html) in a browser on the same network and cli
 | `M100 P<steps> A<steps>` | Set plate / arm backlash compensation (custom) |
 | `M101` | Home the arm (custom) |
 
-`Z` values and feed rates are ignored. The firmware has no pen-lift axis, so the pen stays down during `G0` travel moves too. The preview shows these travel moves in orange.
+`Z` values and feed rates are ignored. The firmware has no pen-lift axis, so the pen stays down during `G0` travel moves too. The preview shows these travel moves as dashed orange lines.
 
 Before streaming, the web app converts every file to absolute `G0`/`G1` moves: it resolves `G91` relative moves and `G28`, and drops lines the firmware would ignore. It also merges moves shorter than 0.5 mm, which keeps dense files (for example SVG exports) from stuttering.
 
@@ -145,10 +147,10 @@ Before streaming, the web app converts every file to absolute `G0`/`G1` moves: i
 
 The motors' internal gearboxes have backlash. To compensate:
 
-1. Click **DRAW CALIBRATION TEST** in the Start tab. It draws a 40 × 40 mm square with a crosshair.
-2. Measure the square. Enter the shortfall as **ARM BACKLASH (MM)**.
-3. If the crosshair or the corners are misaligned, adjust **PLATE BACKLASH (DEGREES)** in steps of about 0.5°.
-4. Click **UPDATE Live Settings** and repeat until the square is accurate.
+1. Click **Draw calibration test** in the Start tab. It draws a 40 × 40 mm square with a crosshair.
+2. Measure the square. Enter the shortfall as the **Arm** backlash (mm).
+3. If the crosshair or the corners are misaligned, adjust the **Plate** backlash (degrees) in steps of about 0.5°.
+4. Click **Send to plotter** and repeat until the square is accurate.
 
 Steps-per-revolution and steps-per-mm are constants at the top of [`firmware/src/main.cpp`](firmware/src/main.cpp) (`PLATE_STEPS_PER_REV`, `STEPS_PER_MM_ARM`).
 
@@ -160,7 +162,7 @@ Steps-per-revolution and steps-per-mm are constants at the top of [`firmware/src
 - **Open-loop homing.** There is no endstop. Homing drives the arm into its mechanical stop for a fixed time and treats that as the centre. Accuracy depends on the pen being mounted consistently.
 - **Backlash resets on reboot.** Values set with `M100` are not saved. The firmware starts with its built-in defaults every time it powers on.
 - **Firmware `G91` / `G28` handling.** The firmware applies relative moves incorrectly, and `G28` doesn't move the pen. The web app converts these to absolute moves, so this only matters if you send G-code another way.
-- **Web app runs locally.** Browsers block unencrypted WebSocket connections from HTTPS pages, so the control panel can't be hosted on GitHub Pages. Open it from disk.
+- **Web app runs locally.** Browsers block unencrypted WebSocket connections from HTTPS pages, so the [hosted copy](https://yigitsalihemecen.github.io/PolarBot/) on GitHub Pages can only preview. To plot, open `web/index.html` from disk.
 - **No position feedback.** The 28BYJ-48 motors can skip steps under load without the firmware noticing.
 
 ## Roadmap
