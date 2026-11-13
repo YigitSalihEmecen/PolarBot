@@ -2,3 +2,5 @@
 .pio/
 .vscode/
 *.code-workspace
+tools/render/out/
+__pycache__/
