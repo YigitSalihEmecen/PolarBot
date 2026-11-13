@@ -1,6 +1,6 @@
 from common import *
 from theme import *
-from pixfont import text_px
+from wordmark import wordmark
 from drawing import rose
 P=parts(); Q=place(P,{})
 R=rot(150,-56)
@@ -15,9 +15,8 @@ fb,_,_,_,_=draw(front,R,1000,900,fill=real_fill,sw=(0.9,1.7),scale=sc,center=c)
 x0,y0,x1,y1=bb; sD=430/(y1-y0)
 dev=(f'<g transform="translate({1560-x1*sD:.1f},{470-y1*sD:.1f}) scale({sD:.4f})">{body}'
      f'<path d="{plot}" stroke="#2C4A8A" stroke-width="1.6" fill="none"/>{fb}</g>')
-pts,w=text_px('POLARBOT'); px=15
-def logo(dx,dy,col): return ''.join(f'<rect x="{dx+x*px}" y="{dy+y*px}" width="{px}" height="{px}" fill="{col}"/>' for x,y in pts)
-L=logo(80,132,CLAY)+logo(74,126,INK)
+L,lw=wordmark('POLARBOT',72,222,128,weight=500,tracking=0.1)
+L+=f'<path d="M78 246H{78+lw:.0f}" stroke="{CLAY}" stroke-width="2"/>'
 chips=['ESP8266 · Wi-Fi','2 × 28BYJ-48','r · θ kinematics','G-code over WebSocket']
 cx=78; ch=''
 for t in chips:
